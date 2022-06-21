@@ -1,3 +1,4 @@
+/**
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -333,3 +334,4 @@ public class SleepCondition : MetroForm
 		return emancipationCnt;
 	}
 }
+*/

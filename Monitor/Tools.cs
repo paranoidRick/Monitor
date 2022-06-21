@@ -101,10 +101,17 @@ internal class Tools
 			lsarray = "";
 		}
 		int[,] cur = ReadFileToArray(path);
-		SendingTxtDataToServer("127.0.0.1", pre, cur);
+
+		int changeCnt = CalcChangeCount(pre, cur);
+		// 暂存上一次变化的个数
+		SaveChangeCnt(DateTime.Now.ToString(), GetLoginUserId(), changeCnt);
+
+		// 关闭睡姿预测
+		// SendingTxtDataToServer("127.0.0.1", pre, cur);
 		return ts;
 	}
 
+	/**
 	public string saveOnBedPhoto(string userId, PictureBox PicMainProgress, TextBox tb_FrameCount)
 	{
 		int flagOnBed = DisplayLastNOnBedData(int.Parse(userId), 3);
@@ -118,6 +125,7 @@ internal class Tools
 		}
 		return "";
 	}
+
 
 	public string ToHexStrFromByte(byte[] byteDatas)
 	{
@@ -166,6 +174,7 @@ internal class Tools
 		src[0] = (byte)((uint)value & 0xFFu);
 		return src;
 	}
+	*/
 
 	public List<byte[]> splitAry(byte[] ary, int subSize)
 	{
@@ -195,6 +204,7 @@ internal class Tools
 		return (byte)now_data;
 	}
 
+	/**
 	// 从数据库查出上一次的姿势
 	public int QueryLastPostureStatus(int user_id)
 	{
@@ -207,23 +217,6 @@ internal class Tools
 		return int.Parse(dr.ItemArray[0].ToString());
 	}
 
-	public int GetUserDepartureCount(int user_id)
-	{
-		string sql = "SELECT SUM( result_data.last_state )  FROM result_data  WHERE result_data.last_state = 1  AND result_data.posture > 0 AND result_data.time >= " + SleepTimeTotal() + " AND result_data.user_id = " + user_id;
-		DataRow dr = SQLiteHelper.ExecuteDataRow(sql);
-		if (dr == null)
-		{
-			return 0;
-		}
-		try
-		{
-			return int.Parse(dr.ItemArray[0].ToString());
-		}
-		catch (Exception)
-		{
-			return 0;
-		}
-	}
 
 	public void SendingTxtDataToServer(string handleServerAddr, int[,] pre, int[,] cur)
 	{
@@ -275,10 +268,31 @@ internal class Tools
 			Console.WriteLine("连接数据处理服务器错误!");
 		}
 	}
+	*/
 
+	public void SaveChangeCnt(string time, int userId, int changeCnt) 
+	{
+		string sqlstr;
+		// 将处理的结果插入数据库
+		sqlstr = "INSERT INTO 'main'.'change' ('id','time','user_id','change_count', 'time_stamp') VALUES (NULL, '" + time + "','" + userId + "','" + changeCnt + "','" + GetTimeStamp() + "');";
+
+		string connectionstr = $"Data Source=sleep.db;Version=3";
+		SQLiteConnection sqlc = new SQLiteConnection(connectionstr);
+		if (sqlc.State == ConnectionState.Closed)
+		{
+			sqlc.Open();
+		}
+		SQLiteCommand cmd = new SQLiteCommand(sqlstr, sqlc);
+		cmd.CommandType = CommandType.Text;
+		int len = cmd.ExecuteNonQuery();
+		sqlc.Close();
+		sqlc.Dispose();
+	}
+
+	/**
 	public void SaveSQLite(string posture, string time, int userId, int changeCnt, int moveLarge, int moveSmall)
 	{
-		int lastStatus = QueryLastPostureStatus(userId);
+		// int lastStatus = QueryLastPostureStatus(userId);
 		string sqlstr;
 		// 将处理的结果插入数据库
 		sqlstr = "INSERT INTO 'main'.'result_data' ('id', 'posture', 'time','user_id','change_count', 'move_large', 'move_small') VALUES (NULL, '" + posture + "', '" + time + "','" + userId + "','" + changeCnt + "','" + moveLarge + "','" + moveSmall + "');";
@@ -295,6 +309,7 @@ internal class Tools
 		sqlc.Close();
 		sqlc.Dispose();
 	}
+	*/
 
 	public int GetLoginUserId()
 	{
@@ -311,6 +326,7 @@ internal class Tools
 		return (int)DateTimeToUnixTime(DateTime.Now) - int.Parse(GetConfigured("SleepTimeTotal"));
 	}
 
+	/**
 	public DataSet DisplayOldData()
 	{
 		string sql = "SELECT result_data.id,result_data.time, result_data.posture FROM  result_data  ORDER BY  result_data.id DESC LIMIT 30";
@@ -326,6 +342,7 @@ internal class Tools
 		return ds;
 	}
 
+
 	public int DisplayLastOneOnBedData(int UserId)
 	{
 		string sql = "SELECT posture FROM result_data WHERE user_id = " + UserId + " ORDER BY result_data.id DESC  LIMIT 1";
@@ -336,6 +353,7 @@ internal class Tools
 		}
 		return int.Parse(dr.ItemArray[0].ToString());
 	}
+
 
 	public int DisplayLastTwoOnBedData(int UserId)
 	{
@@ -502,13 +520,14 @@ internal class Tools
 		object[] commandParameters = parameters;
 		return SQLiteHelper.ExecuteNonQuery(SQLString, commandParameters);
 	}
-
+*/
 	public long DateTimeToUnixTime(DateTime dateTime)
 	{
 		DateTime startTime = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1));
 		return (long)(dateTime - startTime).TotalSeconds;
 	}
 
+	
 	public string formatIntToTimeStr(int l)
 	{
 		TimeSpan ts = new TimeSpan(0, 0, Convert.ToInt32(l));
@@ -564,6 +583,7 @@ internal class Tools
 		}
 		return str;
 	}
+/**
 
 	public int GetTurnTotalCount(int user_id)
 	{
@@ -575,7 +595,7 @@ internal class Tools
 		}
 		return int.Parse(dr.ItemArray[0].ToString());
 	}
-
+*/
 	public string GetNowUserName()
 	{
 		string sql = "SELECT user.name FROM user WHERE user.id =  " + GetLoginUserId();
@@ -680,45 +700,17 @@ internal class Tools
 		int cnt = 0;
 		for (int i = 0; i < 64; i++) {
 			for (int j = 0; j < 32; j++) {
-				if (Math.Abs(cur[i,j] - pre[i,j]) >= 500) {
-					cnt++;
+				try {
+					if (Math.Abs(cur[i, j] - pre[i, j]) >= 500) {
+						cnt++;
+					}
+				} catch (Exception e) { 
 				}
+				
 			}
 		}
 
 		return cnt;
-	}
-	/// <summary>
-	/// 保存用户登录时间
-	/// </summary>
-	/// <param name="userId">用户id</param>
-	/// <param name="time">当前时间</param>
-	public void SaveLoginTime(int userId, string time) {
-		string sqlstr = "INSERT INTO 'main'.'time' ('id', 'user_id', 'login_time') VALUES (NULL, '"  + userId + "','" + time + "');";
-		string connectionstr = $"Data Source=sleep.db;Version=3";
-		SQLiteConnection sqlc = new SQLiteConnection(connectionstr);
-		if (sqlc.State == ConnectionState.Closed)
-		{
-			sqlc.Open();
-		}
-		SQLiteCommand cmd = new SQLiteCommand(sqlstr, sqlc);
-		cmd.CommandType = CommandType.Text;
-		int len = cmd.ExecuteNonQuery();
-		sqlc.Close();
-		sqlc.Dispose();
-	}
-	/// <summary>
-	/// 获取上一次连接的时间
-	/// </summary>
-	/// <param name="userId">用户id</param>
-	/// <returns></returns>
-	public string GetLastLoginTime(int userId) {
-		string sql = "SELECT login_time FROM time WHERE user_id = " + userId + " ORDER BY id DESC LIMIT 1";
-		DataRow dr = SQLiteHelper.ExecuteDataRow(sql);
-		if (dr == null) { 
-			return null;
-		}
-		return dr.ItemArray[0].ToString();
 	}
 
 	/// <summary>
@@ -766,35 +758,117 @@ internal class Tools
 		return Convert.ToInt64(ts.TotalSeconds).ToString();//精确到秒
 	}
 
+	public int[] GetChangeCnts() {
+		string sql = "SELECT change_count FROM 'change' WHERE user_id ='" + GetLoginUserId() + "' ORDER BY time DESC LIMIT 3";
+		DataSet ds = SQLiteHelper.ExecuteDataset(sql);
+
+        int[] arr = new int[3];
+		int i = 0;
+		foreach (DataRow dr in ds.Tables[0].Rows)
+		{
+			arr[i++] = int.Parse(dr.ItemArray[0].ToString());
+		}
+		return arr;
+	}
+
+
 	/// <summary>
 	/// 大体动次数
+	/// <param name="lastChangeCnt">上一次改变的点数</param>
 	/// </summary>
 	/// <returns></returns>
 	public int GetLargeMove()
 	{
-		string time = GetLastLoginTime(GetLoginUserId());
-		string sql = "SELECT result_data.move_large FROM result_data WHERE  result_data.time >=  '" + time + "'AND result_data.user_id ='" + GetLoginUserId() + "' ORDER BY result_data.id DESC LIMIT 1";
-		DataRow dr = SQLiteHelper.ExecuteDataRow(sql);
-		if (dr == null || dr.ItemArray[0].ToString() == null || dr.ItemArray[0].ToString() == "")
-		{
-			return 0;
+		int[] arr = GetChangeCnts();
+		if (arr[0] >= 200 && arr[1] < 100 && arr[2] < 200) {
+			moveLarge++;
 		}
-		return int.Parse(dr.ItemArray[0].ToString());
+
+		if (moveSmall > 0 && arr[0] >= 200 && (arr[1] >= 50 && arr[1] < 200)) { 
+			moveSmall--;
+		}
+
+		return moveLarge;
 	}
 	/// <summary>
 	/// 小体动次数
+	/// <param name="lastChangeCnt">上一次改变的点数</param>
 	/// </summary>
 	/// <returns></returns>
 	public int GetSmallMove()
 	{
-		string time = GetLastLoginTime(GetLoginUserId());
-		string sql = "SELECT result_data.move_small FROM result_data WHERE  result_data.time >=  '" + time + "'AND result_data.user_id ='" + GetLoginUserId() + "' ORDER BY result_data.id DESC LIMIT 1";
+		int[] arr = GetChangeCnts();
+		if ((arr[0] >= 50 && arr[0] < 200) && arr[1] < 50 && arr[2] < 200) {
+			moveSmall++;
+		}
+		
+		return moveSmall;
+	}
+	/// <summary>
+	/// 保存体动结果
+	/// </summary>
+	public void SaveMoveResult(int userId, string startTime, string endTime, string startStamp, string endStamp) {
+		int large = GetLargeMove();
+		int small = GetSmallMove();
+		string sqlstr = "INSERT INTO 'move_result' ('id', 'start_time', 'end_time', 'move_large', 'move_small', 'user_id', 'start_stamp', 'end_stamp') VALUES (NULL, '" + startTime +"','" + endTime + "','" + large + "','" + small + "','" + userId + "','" + startStamp + "','" + endStamp + "');";
+		string connectionstr = $"Data Source=sleep.db;Version=3";
+		SQLiteConnection sqlc = new SQLiteConnection(connectionstr);
+		if (sqlc.State == ConnectionState.Closed)
+		{
+			sqlc.Open();
+		}
+		SQLiteCommand cmd = new SQLiteCommand(sqlstr, sqlc);
+		cmd.CommandType = CommandType.Text;
+		int len = cmd.ExecuteNonQuery();
+		sqlc.Close();
+		sqlc.Dispose();
+	}
+
+	/// <summary>
+	/// 查出压力变化个数最近三帧
+	/// </summary>
+	/// <param name="userId"></param>
+	/// <returns></returns>
+	public DataSet DisplayChangeCntDatas()
+	{
+		// 查询此次登录 10000条数据 — 每4s插入一次数据 10h约9000条
+		string sql = "SELECT change_count, time FROM change Where user_id ='" + GetLoginUserId() + "' ORDER BY time DESC LIMIT 30";
+		DataSet ds = SQLiteHelper.ExecuteDataset(sql);
+		foreach (DataRow row in ds.Tables[0].Rows)
+		{
+			row["time"] = DateTime.Parse(row["time"].ToString()).ToString("HH:mm:ss");
+		}
+		return ds;
+	}
+	/// <summary>
+	/// 查出最新的压力个数变化
+	/// </summary>
+	/// <returns></returns>
+	public int GetChangeCnt() {
+		string sql = "SELECT change_count FROM change WHERE user_id = " + GetLoginUserId() + " ORDER BY time DESC LIMIT 1";
 		DataRow dr = SQLiteHelper.ExecuteDataRow(sql);
-		if (dr == null || dr.ItemArray[0].ToString() == null || dr.ItemArray[0].ToString() == "")
+		if (dr == null)
 		{
 			return 0;
 		}
 		return int.Parse(dr.ItemArray[0].ToString());
 	}
 
+	/// <summary>
+	/// 体动总数
+	/// </summary>
+	/// <returns></returns>
+	public int GetTotalMoveCnt() {
+		return moveLarge + moveSmall;
+	}
+
+	/// <summary>
+	/// 下拉框的数据
+	/// </summary>
+	/// <returns></returns>
+	public DataSet GetLoginTimes() {
+		string sql = "SELECT start_time FROM 'move_result' Where user_id ='" + GetLoginUserId() + "'order by id LIMIT 5;";
+		DataSet ds = SQLiteHelper.ExecuteDataset(sql);
+		return ds;
+	}
 }

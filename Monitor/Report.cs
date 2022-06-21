@@ -1,3 +1,4 @@
+/**
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -344,9 +345,6 @@ public class Report : MetroForm
 			decimal turnTotalTime = (decimal)turnLargeCount * decimal.Parse(tools.GetConfigured("DeviceUploadInterval"));
 			TurnTotalTime.Text = tools.formatIntToTimeStrText(int.Parse(turnTotalTime.ToString()), displayMinutes: true);
 		}
-		int userDepartureCount = tools.GetUserDepartureCount(int.Parse(userId));
-
-		DepartureCount.Text = userDepartureCount.ToString();
 	}
 
 	private void InitChart()
@@ -1313,3 +1311,4 @@ public class Report : MetroForm
 		base.PerformLayout();
 	}
 }
+*/
